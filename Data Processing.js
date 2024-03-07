@@ -2,7 +2,7 @@
 const fs = require('fs').promises;
 
 function convertKeyName(keyName) {
-    // 将字符串转换为小写并替换空格为下划线
+    //
     return keyName.toLowerCase().replace(/ /g, '_');
 }
 
