@@ -1,10 +1,98 @@
-// Import the Node.js module that allows working with files.
 const fss = require('fs')
 const fs = require('fs').promises
-function convertKeyName(keyName) {
-    //                                                                                                                          
-    return keyName.toLowerCase().replace(/ /g, '_');
+
+function calculate_age(date_of_birth, current_date = new Date()) {
+    const birthDate = new Date(date_of_birth);
+    let age = current_date.getFullYear() - birthDate.getFullYear();
+    const m = current_date.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && current_date.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
 }
+function wordToNumber(word) {
+    const numWords = {
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+        "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+        "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
+        "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
+        "ninety": 90
+    };
+
+    let number = 0;
+    if (word.indexOf("-") !== -1) {
+        word.split("-").forEach(part => {
+            number += numWords[part];
+        });
+    } else {
+        number = numWords[word] || "Unknown";
+    }
+
+    return number;
+}
+function convertDateOfBirth(dateOfBirth, providedAge) {
+    const monthMap = {
+        "January": "01",
+        "February": "02",
+        "March": "03",
+        "April": "04",
+        "May": "05",
+        "June": "06",
+        "July": "07",
+        "August": "08",
+        "September": "09",
+        "October": "10",
+        "November": "11",
+        "December": "12"
+    };
+    providedAge = isNaN(providedAge) && typeof providedAge === 'string' ? wordToNumber(providedAge.toLowerCase()) : providedAge;
+
+    // 如果没有提供年龄或年龄是文本形式，尝试根据出生日期计算
+    if (!providedAge || providedAge === "Unknown") {
+        const birthDate = new Date(`${year}-${month}-${day}`);
+        providedAge = calculate_age(birthDate);
+    }
+    if (typeof dateOfBirth !== 'string') {
+        console.error('Invalid dateOfBirth:', dateOfBirth);
+        return { date: '01/01/1900', age: 'Unknown' };
+    }
+
+    let parts = dateOfBirth.includes('/') ? dateOfBirth.split('/') : dateOfBirth.split(' ');
+    let month, day, year;
+
+    if (isNaN(parts[1])) { // 月份为单词
+        month = monthMap[parts[1]];
+        day = parts[0].padStart(2, '0');
+        year = parts[2];
+    } else { // 月份为数字
+        day = parts[0].padStart(2, '0');
+        month = parts[1].padStart(2, '0');
+        year = parts[2];
+    }
+
+    // 处理两位数年份
+    if (year.length === 2) {
+        const currentYear = new Date().getFullYear();
+        const currentYearLastTwoDigits = parseInt(currentYear.toString().slice(-2), 10);
+        const guessedCentury = (parseInt(year) > currentYearLastTwoDigits) ? '19' : '20';
+        year = guessedCentury + year;
+    }
+
+    // 根据完整年份重新组装出生日期以便计算年龄
+    dateOfBirth = `${day}/${month}/${year}`;
+
+    // 如果没有提供年龄，则根据出生日期计算
+    let age = providedAge;
+    if (!age) {
+        age = calculate_age(`${year}-${month}-${day}`);
+    }
+
+    return { date: dateOfBirth, corrected_age: age.toString() };
+}
+
+
 
 class Data_Processing {
     constructor() {
@@ -32,47 +120,50 @@ class Data_Processing {
 
 
     format_data() {
-        this.rawUserData = this.raw_user_data.split('\n').map(row => row.split(','));
-        //
+        this.rawUserData = this.raw_user_data.split('\n').filter(Boolean).map(row => row.split(','));
         this.formatted_user_data = this.rawUserData.map(row => {
-            //
             const [fullName, dateOfBirth, age, email] = row.map(item => item.trim());
-
-            //
             const validTitles = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Dr."];
 
-            //
-            const nameParts = fullName.split(' ');
-            //
-            const title = validTitles.includes(nameParts[0]) ? nameParts[0] : "";
-            //
-            const namesWithoutTitle = title ? nameParts.slice(1).join(' ') : nameParts.join(' ');
-
-            //
-            const processedNames = namesWithoutTitle.split(' ').map(name =>
-                name.charAt(0).toUpperCase() + name.slice(1).toLowerCase()
-            ).join(' ');
-
-            //
-            const processedNameParts = processedNames.split(' ');
-            const firstName = processedNameParts[0];
-            const surname = processedNameParts[processedNameParts.length - 1];
-            //
-            const middleName = processedNameParts.length > 2 ? processedNameParts.slice(1, -1).join(' ') : '';
+            const nameParts = fullName.split(' ').filter(Boolean);
+            let title = "";
+            let firstName = '';
+            let middleName = '';
+            let surname = '';
 
 
-            //
+            if (validTitles.includes(nameParts[0])) {
+                title = nameParts.shift();
+            }
+
+            if (nameParts.length >= 1) {
+                firstName = nameParts[0];
+            }
+            if (nameParts.length >= 2) {
+                surname = nameParts[nameParts.length - 1];
+            }
+            if (nameParts.length > 2) {
+                middleName = nameParts.slice(1, -1).join(' ');
+            }
+
+
+            const { date: correctedDateOfBirth, corrected_age: true_age } = convertDateOfBirth(dateOfBirth, age);
+
             return {
-                [convertKeyName('Title')]: title,
-                [convertKeyName('First name')]: firstName,
-                [convertKeyName('Middle name')]: middleName,
-                [convertKeyName('Surname')]: surname,
-                [convertKeyName('Date of birth')]: dateOfBirth,
-                [convertKeyName('Age')]: Number(age),
-                [convertKeyName('Email')]: email
+                title: title, // 可能为空
+                first_name: firstName,
+                middle_name: middleName,
+                surname: surname,
+                date_of_birth: correctedDateOfBirth,
+                age: Number(true_age),
+                email: email
             };
         });
     }
+
+
+
+
 
     cleanData() {
         this.cleanedUserData = this.formattedUserData.map(user => {
@@ -143,7 +234,7 @@ class Data_Processing {
 
 
 }
-
+// //
 // const dataProcessor = new Data_Processing();
 //
 // // 直接按顺序执行方法
