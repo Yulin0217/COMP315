@@ -1,6 +1,7 @@
 const fss = require('fs')
 const fs = require('fs').promises
 
+// Calculate ages for those data have no ages
 function calculate_age(date_of_birth, current_date = new Date()) {
     const birth_date = new Date(date_of_birth);
     let age = current_date.getFullYear() - birth_date.getFullYear();
@@ -10,8 +11,10 @@ function calculate_age(date_of_birth, current_date = new Date()) {
     }
     return age;
 }
+
+// Convert those ages with words to bits
 function word_number_to_bit(word) {
-    const number_word_list = {
+    const number_word_map = {
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
         "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
         "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
@@ -24,16 +27,18 @@ function word_number_to_bit(word) {
     let number = 0;
     if (word.indexOf("-") !== -1) {
         word.split("-").forEach(part => {
-            number += number_word_list[part];
+            number += number_word_map[part];
         });
     } else {
-        number = number_word_list[word] || "Unknown";
+        number = number_word_map[word];
     }
 
     return number;
 }
+
+// Convert those months using words to digits
 function convert_month_date(date_of_birth, input_age) {
-    const monthMap = {
+    const month_map = {
         "January": "01",
         "February": "02",
         "March": "03",
@@ -49,7 +54,7 @@ function convert_month_date(date_of_birth, input_age) {
     };
     input_age = isNaN(input_age) && typeof input_age === 'string' ? word_number_to_bit(input_age.toLowerCase()) : input_age;
 
-    // 如果没有提供年龄或年龄是文本形式，尝试根据出生日期计算
+
     if (!input_age || input_age === "Unknown") {
         const birth_date = new Date(`${year}-${month}-${day}`);
         input_age = calculate_age(birth_date);
@@ -59,25 +64,25 @@ function convert_month_date(date_of_birth, input_age) {
         return { date: '01/01/1900', age: 'Unknown' };
     }
 
-    let parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
+    let date_parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
     let month, day, year;
 
-    if (isNaN(parts[1])) { // 月份为单词
-        month = monthMap[parts[1]];
-        day = parts[0].padStart(2, '0');
-        year = parts[2];
-    } else { // 月份为数字
-        day = parts[0].padStart(2, '0');
-        month = parts[1].padStart(2, '0');
-        year = parts[2];
+    if (isNaN(date_parts[1])) {
+        month = month_map[date_parts[1]];
+        day = date_parts[0].padStart(2, '0');
+        year = date_parts[2];
+    } else {
+        day = date_parts[0].padStart(2, '0');
+        month = date_parts[1].padStart(2, '0');
+        year = date_parts[2];
     }
 
-    // 处理两位数年份
+
     if (year.length === 2) {
-        const currentYear = new Date().getFullYear();
-        const currentYearLastTwoDigits = parseInt(currentYear.toString().slice(-2), 10);
-        const guessedCentury = (parseInt(year) > currentYearLastTwoDigits) ? '19' : '20';
-        year = guessedCentury + year;
+        const current_year = new Date().getFullYear();
+        const last_two_digits = parseInt(current_year.toString().slice(-2), 10);
+        const first_two_digits = (parseInt(year) > last_two_digits) ? '19' : '20';
+        year = first_two_digits + year;
     }
 
     date_of_birth = `${day}/${month}/${year}`;
@@ -99,60 +104,61 @@ class Data_Processing {
         this.cleaned_user_data = [];
     }
 
-
+    // Load data from csv
     load_CSV(filename) {
         this.raw_user_data = fss.readFileSync(`${filename}.csv`, 'utf8');
     }
 
-    async saveFormattedDataToFile(filePath) {
+    // Save formatted data to json file
+    async save_formatted_data(file_path) {
         try {
             //
-            const dataString = JSON.stringify(this.formatted_user_data, null, 2);
+            const data = JSON.stringify(this.formatted_user_data, null, 2);
             //
-            await fs.writeFile(filePath, dataString, 'utf-8');
+            await fs.writeFile(file_path, data, 'utf-8');
             console.log('Data saved to file successfully.');
         } catch (error) {
             console.error('Failed to save data to file:', error);
         }
     }
 
-
+    //Main method for formatting data
     format_data() {
-        this.rawUserData = this.raw_user_data.split('\n').filter(Boolean).map(row => row.split(','));
-        this.formatted_user_data = this.rawUserData.map(row => {
-            const [fullName, dateOfBirth, age, email] = row.map(item => item.trim());
-            const validTitles = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Dr."];
+        this.split_raw_user_data = this.raw_user_data.split('\n').filter(Boolean).map(row => row.split(','));
+        this.formatted_user_data = this.split_raw_user_data.map(row => {
+            const [full_name, date_of_birth, age, email] = row.map(item => item.trim());
+            const titles = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Dr."];
 
-            const nameParts = fullName.split(' ').filter(Boolean);
+            const parts_of_names = full_name.split(' ').filter(Boolean);
             let title = "";
-            let firstName = '';
-            let middleName = '';
-            let surname = '';
+            let first_name = '';
+            let middle_name = '';
+            let sur_name = '';
 
 
-            if (validTitles.includes(nameParts[0])) {
-                title = nameParts.shift();
+            if (titles.includes(parts_of_names[0])) {
+                title = parts_of_names.shift();
             }
 
-            if (nameParts.length >= 1) {
-                firstName = nameParts[0];
+            if (parts_of_names.length >= 1) {
+                first_name = parts_of_names[0];
             }
-            if (nameParts.length >= 2) {
-                surname = nameParts[nameParts.length - 1];
+            if (parts_of_names.length >= 2) {
+                sur_name = parts_of_names[parts_of_names.length - 1];
             }
-            if (nameParts.length > 2) {
-                middleName = nameParts.slice(1, -1).join(' ');
+            if (parts_of_names.length > 2) {
+                middle_name = parts_of_names.slice(1, -1).join(' ');
             }
 
 
-            const { date: correctedDateOfBirth, corrected_age: true_age } = convert_month_date(dateOfBirth, age);
+            const { date: corrected_birth, corrected_age: true_age } = convert_month_date(date_of_birth, age);
 
             return {
                 title: title, // 可能为空
-                first_name: firstName,
-                middle_name: middleName,
-                surname: surname,
-                date_of_birth: correctedDateOfBirth,
+                first_name: first_name,
+                middle_name: middle_name,
+                surname: sur_name,
+                date_of_birth: corrected_birth,
                 age: Number(true_age),
                 email: email
             };
@@ -233,10 +239,10 @@ class Data_Processing {
 
 }
 // //
-const dataProcessor = new Data_Processing();
-
-// 直接按顺序执行方法
-dataProcessor.load_CSV("Raw_User_Data");
-dataProcessor.format_data();
-//dataProcessor.cleanData();
-dataProcessor.saveFormattedDataToFile("./formattedUserData.json");
+// const dataProcessor = new Data_Processing();
+//
+// // 直接按顺序执行方法
+// dataProcessor.load_CSV("Raw_User_Data");
+// dataProcessor.format_data();
+// //dataProcessor.cleanData();
+// dataProcessor.save_formatted_data("./formattedUserData.json");
