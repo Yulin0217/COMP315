@@ -2,16 +2,16 @@ const fss = require('fs')
 const fs = require('fs').promises
 
 function calculate_age(date_of_birth, current_date = new Date()) {
-    const birthDate = new Date(date_of_birth);
-    let age = current_date.getFullYear() - birthDate.getFullYear();
-    const m = current_date.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && current_date.getDate() < birthDate.getDate())) {
+    const birth_date = new Date(date_of_birth);
+    let age = current_date.getFullYear() - birth_date.getFullYear();
+    const m = current_date.getMonth() - birth_date.getMonth();
+    if (m < 0 || (m === 0 && current_date.getDate() < birth_date.getDate())) {
         age--;
     }
     return age;
 }
-function wordToNumber(word) {
-    const numWords = {
+function word_number_to_bit(word) {
+    const number_word_list = {
         "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
         "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
         "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
@@ -24,15 +24,15 @@ function wordToNumber(word) {
     let number = 0;
     if (word.indexOf("-") !== -1) {
         word.split("-").forEach(part => {
-            number += numWords[part];
+            number += number_word_list[part];
         });
     } else {
-        number = numWords[word] || "Unknown";
+        number = number_word_list[word] || "Unknown";
     }
 
     return number;
 }
-function convertDateOfBirth(dateOfBirth, providedAge) {
+function convert_month_date(date_of_birth, input_age) {
     const monthMap = {
         "January": "01",
         "February": "02",
@@ -47,19 +47,19 @@ function convertDateOfBirth(dateOfBirth, providedAge) {
         "November": "11",
         "December": "12"
     };
-    providedAge = isNaN(providedAge) && typeof providedAge === 'string' ? wordToNumber(providedAge.toLowerCase()) : providedAge;
+    input_age = isNaN(input_age) && typeof input_age === 'string' ? word_number_to_bit(input_age.toLowerCase()) : input_age;
 
     // 如果没有提供年龄或年龄是文本形式，尝试根据出生日期计算
-    if (!providedAge || providedAge === "Unknown") {
-        const birthDate = new Date(`${year}-${month}-${day}`);
-        providedAge = calculate_age(birthDate);
+    if (!input_age || input_age === "Unknown") {
+        const birth_date = new Date(`${year}-${month}-${day}`);
+        input_age = calculate_age(birth_date);
     }
-    if (typeof dateOfBirth !== 'string') {
-        console.error('Invalid dateOfBirth:', dateOfBirth);
+    if (typeof date_of_birth !== 'string') {
+        console.error('Invalid dateOfBirth:', date_of_birth);
         return { date: '01/01/1900', age: 'Unknown' };
     }
 
-    let parts = dateOfBirth.includes('/') ? dateOfBirth.split('/') : dateOfBirth.split(' ');
+    let parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
     let month, day, year;
 
     if (isNaN(parts[1])) { // 月份为单词
@@ -80,16 +80,14 @@ function convertDateOfBirth(dateOfBirth, providedAge) {
         year = guessedCentury + year;
     }
 
-    // 根据完整年份重新组装出生日期以便计算年龄
-    dateOfBirth = `${day}/${month}/${year}`;
+    date_of_birth = `${day}/${month}/${year}`;
 
-    // 如果没有提供年龄，则根据出生日期计算
-    let age = providedAge;
+    let age = input_age;
     if (!age) {
         age = calculate_age(`${year}-${month}-${day}`);
     }
 
-    return { date: dateOfBirth, corrected_age: age.toString() };
+    return { date: date_of_birth, corrected_age: age.toString() };
 }
 
 
@@ -147,7 +145,7 @@ class Data_Processing {
             }
 
 
-            const { date: correctedDateOfBirth, corrected_age: true_age } = convertDateOfBirth(dateOfBirth, age);
+            const { date: correctedDateOfBirth, corrected_age: true_age } = convert_month_date(dateOfBirth, age);
 
             return {
                 title: title, // 可能为空
@@ -235,10 +233,10 @@ class Data_Processing {
 
 }
 // //
-// const dataProcessor = new Data_Processing();
-//
-// // 直接按顺序执行方法
-// dataProcessor.load_CSV("Raw_User_Data");
-// dataProcessor.format_data();
-// //dataProcessor.cleanData();
-// dataProcessor.saveFormattedDataToFile("./formattedUserData.json");
+const dataProcessor = new Data_Processing();
+
+// 直接按顺序执行方法
+dataProcessor.load_CSV("Raw_User_Data");
+dataProcessor.format_data();
+//dataProcessor.cleanData();
+dataProcessor.saveFormattedDataToFile("./formattedUserData.json");
