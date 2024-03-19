@@ -74,6 +74,30 @@ function convert_month_date(date_of_birth, input_age) {
     return {date: date_of_birth, corrected_age: age.toString()};
 }
 
+function cleanEmail(firstName, surname, nameCounter) {
+
+    const baseName = `${firstName}.${surname}`;
+    const baseEmail = `${baseName}@example.com`;
+
+    const totalOccurrences = nameCounter[baseName] || 0;
+    if (totalOccurrences > 1) {
+        if (!cleanEmail.emailNumbers) {
+            cleanEmail.emailNumbers = {};
+        }
+        const currentNumber = (cleanEmail.emailNumbers[baseName] || 0) + 1;
+        cleanEmail.emailNumbers[baseName] = currentNumber;
+        return `${baseName}${currentNumber}@example.com`;
+    } else {
+        return baseEmail;
+    }
+}
+
+
+
+
+
+
+
 
 class Data_Processing {
     constructor() {
@@ -88,12 +112,12 @@ class Data_Processing {
     }
 
     // Save formatted data to json file
-    async save_formatted_data(file_path) {
+    save_formatted_data(file_path) {
         try {
             //
             const data = JSON.stringify(this.formatted_user_data, null, 2);
             //
-            await fs.writeFile(file_path, data, 'utf-8');
+            fs.writeFile(file_path, data, 'utf-8');
             console.log('Data saved to file successfully.');
         } catch (error) {
             console.error('Failed to save data to file:', error);
@@ -145,9 +169,9 @@ class Data_Processing {
 
 
     clean_data() {
+        // First, remove duplicates
         const usr_map = new Map();
-
-        this.cleaned_user_data = this.formatted_user_data.filter(user => {
+        const uniqueUsers = this.formatted_user_data.filter(user => {
             const {title, first_name, middle_name, surname, date_of_birth, age} = user;
             const usr_key = `${title}-${first_name}-${middle_name}-${surname}-${date_of_birth}-${age}`;
 
@@ -157,17 +181,35 @@ class Data_Processing {
                 usr_map.set(usr_key, true);
                 return true;
             }
-        }).map(user => {
+        });
+
+        // Second, clean title, first_name, surname, age
+        this.cleaned_user_data = uniqueUsers.map(user => {
             let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
+
             title = this.clean_title(title);
             first_name = this.clean_first_name(first_name, email);
-            surname = this.clean_sur_name(surname,email);
+            surname = this.clean_sur_name(surname, email);
             age = this.clean_age(date_of_birth);
-            // email = this.cleanEmail(email, first_name, surname);
-
             return {title, first_name, middle_name, surname, date_of_birth, age, email};
         });
+
+        //Then can do clean email, because if not cleaned others data, there maybe lack of names
+        const nameCounter = {};
+        this.cleaned_user_data.forEach(({first_name, surname}) => {
+            const baseName = `${first_name}.${surname}`;
+            nameCounter[baseName] = (nameCounter[baseName] || 0) + 1;
+        });
+
+        // Then clean email
+        this.cleaned_user_data = this.cleaned_user_data.map(user => {
+            let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
+            email = cleanEmail(first_name, surname, nameCounter);
+            return {title, first_name, middle_name, surname, date_of_birth, age, email};
+        });
+
     }
+
 
 
     clean_title(title) {
@@ -208,12 +250,6 @@ class Data_Processing {
     }
 
 
-
-    cleanEmail(email, firstName, surname) {
-
-    }
-
-
 }
 
 // //
@@ -222,5 +258,5 @@ class Data_Processing {
 // // 直接按顺序执行方法
 // dataProcessor.load_CSV("Raw_User_Data");
 // dataProcessor.format_data();
-// //dataProcessor.cleanData();
+// dataProcessor.clean_data();
 // dataProcessor.save_formatted_data("./formattedUserData.json");
