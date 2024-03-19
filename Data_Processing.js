@@ -1,17 +1,6 @@
 const fss = require('fs')
 const fs = require('fs').promises
 
-// Calculate ages for those data have no ages
-function calculate_age(date_of_birth, current_date = new Date()) {
-    const birth_date = new Date(date_of_birth);
-    let age = current_date.getFullYear() - birth_date.getFullYear();
-    const m = current_date.getMonth() - birth_date.getMonth();
-    if (m < 0 || (m === 0 && current_date.getDate() < birth_date.getDate())) {
-        age--;
-    }
-    return age;
-}
-
 // Convert those ages with words to bits
 function word_number_to_bit(word) {
     const number_word_map = {
@@ -54,14 +43,8 @@ function convert_month_date(date_of_birth, input_age) {
     };
     input_age = isNaN(input_age) && typeof input_age === 'string' ? word_number_to_bit(input_age.toLowerCase()) : input_age;
 
-
-    if (!input_age || input_age === "Unknown") {
-        const birth_date = new Date(`${year}-${month}-${day}`);
-        input_age = calculate_age(birth_date);
-    }
     if (typeof date_of_birth !== 'string') {
         console.error('Invalid dateOfBirth:', date_of_birth);
-        return { date: '01/01/1900', age: 'Unknown' };
     }
 
     let date_parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
@@ -88,13 +71,8 @@ function convert_month_date(date_of_birth, input_age) {
     date_of_birth = `${day}/${month}/${year}`;
 
     let age = input_age;
-    if (!age) {
-        age = calculate_age(`${year}-${month}-${day}`);
-    }
-
-    return { date: date_of_birth, corrected_age: age.toString() };
+    return {date: date_of_birth, corrected_age: age.toString()};
 }
-
 
 
 class Data_Processing {
@@ -151,10 +129,10 @@ class Data_Processing {
             }
 
 
-            const { date: corrected_birth, corrected_age: true_age } = convert_month_date(date_of_birth, age);
+            const {date: corrected_birth, corrected_age: true_age} = convert_month_date(date_of_birth, age);
 
             return {
-                title: title, // 可能为空
+                title: title,
                 first_name: first_name,
                 middle_name: middle_name,
                 surname: sur_name,
@@ -166,78 +144,78 @@ class Data_Processing {
     }
 
 
+    clean_data() {
+        const usr_map = new Map();
 
+        this.cleaned_user_data = this.formatted_user_data.filter(user => {
+            const {title, first_name, middle_name, surname, date_of_birth, age} = user;
+            const usr_key = `${title}-${first_name}-${middle_name}-${surname}-${date_of_birth}-${age}`;
 
-
-    cleanData() {
-        this.cleanedUserData = this.formattedUserData.map(user => {
-            //
+            if (usr_map.has(usr_key)) {
+                return false;
+            } else {
+                usr_map.set(usr_key, true);
+                return true;
+            }
+        }).map(user => {
             let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
-
-            //
-            title = this.cleanTitle(title);
-            first_name = this.cleanName(first_name);
-            middle_name = this.cleanName(middle_name);
-            surname = this.cleanName(surname);
-            date_of_birth = this.cleanDateOfBirth(date_of_birth);
-            age = this.cleanAge(date_of_birth, age);
-            email = this.cleanEmail(email, first_name, surname);
+            title = this.clean_title(title);
+            first_name = this.clean_first_name(first_name, email);
+            surname = this.clean_sur_name(surname,email);
+            age = this.clean_age(date_of_birth);
+            // email = this.cleanEmail(email, first_name, surname);
 
             return {title, first_name, middle_name, surname, date_of_birth, age, email};
         });
-        console.log('Processing clean data section!');
     }
 
-    //
 
-    cleanTitle(title) {
-        //
-        const validTitles = ["Mr", "Mrs", "Miss", "Ms", "Dr", "Dr."];
-        return validTitles.includes(title) ? title : "";
+    clean_title(title) {
+        title = title.replace("Dr.", "Dr");
+        const titles = ["Mr", "Mrs", "Miss", "Ms", "Dr"];
+        return titles.includes(title) ? title : "";
     }
 
-    cleanName(name) {
-        //
-        return name.split('-').map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()).join('-');
+    clean_first_name(name, email) {
+        if (name) return name;
+        const email_part = email.split('@')[0].split('.');
+        return email_part[0];
     }
 
-    cleanDateOfBirth(dob) {
-        //
-        const regex = /^\d{2}\/\d{2}\/\d{4}$/;
-        return regex.test(dob) ? dob : "01/01/1900";
+
+    clean_sur_name(name, email) {
+        if (name) return name;
+        const email_part = email.split('@')[0].split('.');
+        let sur_name_maybe_with_bit = email_part.length > 1 ? email_part[1] : "";
+        const sur_name = sur_name_maybe_with_bit.replace(/[0-9]/g, '');
+        return sur_name;
     }
 
-    cleanAge(dob, age) {
 
-        const calculatedAge = this.calculateAgeFromDob(dob);
-        return calculatedAge.toString() === age ? age : calculatedAge.toString();
-    }
+    clean_age(date_of_birth) {
+        const collected_date = new Date(2024, 1, 26); // JavaScript中月份是从0开始的，所以1代表二月
+        const birth_dat_part = date_of_birth.split('/');
+        const birth_date = new Date(parseInt(birth_dat_part[2], 10), parseInt(birth_dat_part[1], 10) - 1, parseInt(birth_dat_part[0], 10));
 
-    calculateAgeFromDob(dob) {
-        const [day, month, year] = dob.split('/').map(part => parseInt(part, 10));
-        const birthDate = new Date(year, month - 1, day);
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-            age--;
+        let age_year = collected_date.getFullYear() - birth_date.getFullYear();
+        const month = collected_date.getMonth() - birth_date.getMonth();
+        // Check if reached birthday
+        if (month < 0 || (month === 0 && collected_date.getDate() < birth_date.getDate())) {
+            age_year--;
         }
-        return age;
+
+        return age_year;
     }
+
+
 
     cleanEmail(email, firstName, surname) {
-        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (regex.test(email)) {
-            return email;
-        } else {
-            const cleanFirstName = firstName.toLowerCase().replace(/\s+/g, '');
-            const cleanSurname = surname.toLowerCase().replace(/\s+/g, '');
-            return `${cleanFirstName}.${cleanSurname}@example.com`;
-        }
+
     }
 
 
 }
+
 // //
 // const dataProcessor = new Data_Processing();
 //
