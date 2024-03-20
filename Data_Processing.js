@@ -74,30 +74,23 @@ function convert_month_date(date_of_birth, input_age) {
     return {date: date_of_birth, corrected_age: age.toString()};
 }
 
-function cleanEmail(firstName, surname, nameCounter) {
+function clean_email(firstName, surname, nameCounter) {
 
-    const baseName = `${firstName}.${surname}`;
-    const baseEmail = `${baseName}@example.com`;
+    const name_key = `${firstName}.${surname}`;
+    const email_key = `${name_key}@example.com`;
 
-    const totalOccurrences = nameCounter[baseName] || 0;
-    if (totalOccurrences > 1) {
-        if (!cleanEmail.emailNumbers) {
-            cleanEmail.emailNumbers = {};
+    const total_number = nameCounter[name_key] || 0;
+    if (total_number > 1) {
+        if (!clean_email.emailNumbers) {
+            clean_email.emailNumbers = {};
         }
-        const currentNumber = (cleanEmail.emailNumbers[baseName] || 0) + 1;
-        cleanEmail.emailNumbers[baseName] = currentNumber;
-        return `${baseName}${currentNumber}@example.com`;
+        const current_number = (clean_email.emailNumbers[name_key] || 0) + 1;
+        clean_email.emailNumbers[name_key] = current_number;
+        return `${name_key}${current_number}@example.com`;
     } else {
-        return baseEmail;
+        return email_key;
     }
 }
-
-
-
-
-
-
-
 
 class Data_Processing {
     constructor() {
@@ -167,11 +160,10 @@ class Data_Processing {
         });
     }
 
-
     clean_data() {
         // First, remove duplicates
         const usr_map = new Map();
-        const uniqueUsers = this.formatted_user_data.filter(user => {
+        const unique_usr = this.formatted_user_data.filter(user => {
             const {title, first_name, middle_name, surname, date_of_birth, age} = user;
             const usr_key = `${title}-${first_name}-${middle_name}-${surname}-${date_of_birth}-${age}`;
 
@@ -184,7 +176,7 @@ class Data_Processing {
         });
 
         // Second, clean title, first_name, surname, age
-        this.cleaned_user_data = uniqueUsers.map(user => {
+        this.cleaned_user_data = unique_usr.map(user => {
             let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
 
             title = this.clean_title(title);
@@ -195,22 +187,20 @@ class Data_Processing {
         });
 
         //Then can do clean email, because if not cleaned others data, there maybe lack of names
-        const nameCounter = {};
+        const counter = {};
         this.cleaned_user_data.forEach(({first_name, surname}) => {
-            const baseName = `${first_name}.${surname}`;
-            nameCounter[baseName] = (nameCounter[baseName] || 0) + 1;
+            const name_key = `${first_name}.${surname}`;
+            counter[name_key] = (counter[name_key] || 0) + 1;
         });
 
         // Then clean email
         this.cleaned_user_data = this.cleaned_user_data.map(user => {
             let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
-            email = cleanEmail(first_name, surname, nameCounter);
+            email = clean_email(first_name, surname, counter);
             return {title, first_name, middle_name, surname, date_of_birth, age, email};
         });
 
     }
-
-
 
     clean_title(title) {
         title = title.replace("Dr.", "Dr");
@@ -224,7 +214,6 @@ class Data_Processing {
         return email_part[0];
     }
 
-
     clean_sur_name(name, email) {
         if (name) return name;
         const email_part = email.split('@')[0].split('.');
@@ -232,7 +221,6 @@ class Data_Processing {
         const sur_name = sur_name_maybe_with_bit.replace(/[0-9]/g, '');
         return sur_name;
     }
-
 
     clean_age(date_of_birth) {
         const collected_date = new Date(2024, 1, 26); // JavaScript中月份是从0开始的，所以1代表二月
@@ -249,14 +237,89 @@ class Data_Processing {
         return age_year;
     }
 
+    most_common_surname(){
+        const count = {};
+
+        this.cleaned_user_data.forEach(({surname}) => {
+            count[surname] = (count[surname] || 0) + 1;
+        });
+
+        let most_common_surnames = [];
+        let max = 0;
+
+        Object.entries(count).forEach(([surname, count]) => {
+            if (count > max) {
+                max = count;
+                most_common_surnames = [surname];
+            } else if (count === max) {
+                most_common_surnames.push(surname);
+            }
+        });
+
+        return most_common_surnames;
+    }
+
+    average_age() {
+        const age_sum = this.cleaned_user_data.reduce((acc, { age }) => acc + age, 0);
+        const average = age_sum / this.cleaned_user_data.length;
+        return parseFloat(average.toFixed(1));
+    }
+
+    youngest_dr() {
+        const doctors = this.cleaned_user_data.filter(user => user.title === 'Dr');
+        let youngest = doctors[0];
+        for (let i = 1; i < doctors.length; i++) {
+            if (doctors[i].age < youngest.age) {
+                youngest = doctors[i];
+            }
+        }
+        return youngest;
+    }
+
+    most_common_month() {
+        const count = {};
+        this.cleaned_user_data.forEach(user => {
+            const month = parseInt(user.date_of_birth.split('/')[1], 10).toString();
+            if (count[month]) {
+                count[month]++;
+            } else {
+                count[month] = 1;
+            }
+        });
+        let most_common_month = 0;
+        let highest_count = 0;
+        for (const month in count) {
+            if (count[month] > highest_count) {
+                most_common_month = month;
+                highest_count = count[month];
+            }
+        }
+        return most_common_month;
+    }
+
+    percentage_titles() {
+        const title_count = {
+            "Mr": 0,
+            "Mrs": 0,
+            "Miss": 0,
+            "Ms": 0,
+            "Dr": 0,
+            "": 0
+        };
+
+        this.cleaned_user_data.forEach(user => {
+            title_count[user.title]++;
+        });
+
+        const total_usr = this.cleaned_user_data.length;
+
+        const percentages = Object.values(title_count).map(count => Math.round((count / total_usr) * 100));
+
+        return percentages;
+    }
+
+
+
 
 }
 
-// //
-// const dataProcessor = new Data_Processing();
-//
-// // 直接按顺序执行方法
-// dataProcessor.load_CSV("Raw_User_Data");
-// dataProcessor.format_data();
-// dataProcessor.clean_data();
-// dataProcessor.save_formatted_data("./formattedUserData.json");
