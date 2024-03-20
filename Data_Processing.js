@@ -1,78 +1,6 @@
 const fss = require('fs')
 const fs = require('fs').promises
 
-// Convert those ages with words to bits
-function word_number_to_bit(word) {
-    const number_word_map = {
-        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
-        "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
-        "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
-        "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
-        "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
-        "ninety": 90
-    };
-
-    let number = 0;
-    if (word.indexOf("-") !== -1) {
-        word.split("-").forEach(part => {
-            number += number_word_map[part];
-        });
-    } else {
-        number = number_word_map[word];
-    }
-
-    return number;
-}
-
-// Convert those months using words to digits
-function convert_month_date(date_of_birth, input_age) {
-    const month_map = {
-        "January": "01",
-        "February": "02",
-        "March": "03",
-        "April": "04",
-        "May": "05",
-        "June": "06",
-        "July": "07",
-        "August": "08",
-        "September": "09",
-        "October": "10",
-        "November": "11",
-        "December": "12"
-    };
-    input_age = isNaN(input_age) && typeof input_age === 'string' ? word_number_to_bit(input_age.toLowerCase()) : input_age;
-
-    if (typeof date_of_birth !== 'string') {
-        console.error('Invalid dateOfBirth:', date_of_birth);
-    }
-
-    let date_parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
-    let month, day, year;
-
-    if (isNaN(date_parts[1])) {
-        month = month_map[date_parts[1]];
-        day = date_parts[0].padStart(2, '0');
-        year = date_parts[2];
-    } else {
-        day = date_parts[0].padStart(2, '0');
-        month = date_parts[1].padStart(2, '0');
-        year = date_parts[2];
-    }
-
-
-    if (year.length === 2) {
-        const current_year = new Date(2024, 1, 26).getFullYear();
-        const last_two_digits = parseInt(current_year.toString().slice(-2), 10);
-        const first_two_digits = (parseInt(year) > last_two_digits) ? '19' : '20';
-        year = first_two_digits + year;
-    }
-
-    date_of_birth = `${day}/${month}/${year}`;
-
-    let age = input_age;
-    return {date: date_of_birth, corrected_age: age.toString()};
-}
 
 function clean_email(firstName, surname, nameCounter) {
 
@@ -118,6 +46,77 @@ class Data_Processing {
         }
     }
 
+
+    // Convert those ages with words to bits
+    word_number_to_bit(word) {
+        const number_word_map = {
+            "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+            "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+            "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+            "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18,
+            "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
+            "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80,
+            "ninety": 90
+        };
+
+        let number = 0;
+        if (word.indexOf("-") !== -1) {
+            word.split("-").forEach(part => {
+                number += number_word_map[part];
+            });
+        } else {
+            number = number_word_map[word];
+        }
+
+        return number;
+    }
+
+    // Convert those months using words to digits
+    convert_month_date(date_of_birth, input_age) {
+        const month_map = {
+            "January": "01",
+            "February": "02",
+            "March": "03",
+            "April": "04",
+            "May": "05",
+            "June": "06",
+            "July": "07",
+            "August": "08",
+            "September": "09",
+            "October": "10",
+            "November": "11",
+            "December": "12"
+        };
+        input_age = isNaN(input_age) && typeof input_age === 'string' ? this.word_number_to_bit(input_age.toLowerCase()) : input_age;
+
+        let date_parts = date_of_birth.includes('/') ? date_of_birth.split('/') : date_of_birth.split(' ');
+        let month, day, year;
+
+        if (isNaN(date_parts[1])) {
+            month = month_map[date_parts[1]];
+            day = date_parts[0].padStart(2, '0');
+            year = date_parts[2];
+        } else {
+            day = date_parts[0].padStart(2, '0');
+            month = date_parts[1].padStart(2, '0');
+            year = date_parts[2];
+        }
+
+
+        if (year.length === 2) {
+            const current_year = new Date(2024, 1, 26).getFullYear();
+            const last_two_digits = parseInt(current_year.toString().slice(-2), 10);
+            const first_two_digits = (parseInt(year) > last_two_digits) ? '19' : '20';
+            year = first_two_digits + year;
+        }
+
+        date_of_birth = `${day}/${month}/${year}`;
+
+        let age = input_age;
+        return {date: date_of_birth, corrected_age: age.toString()};
+    }
+
+
     //Main method for formatting data
     format_data() {
         this.split_raw_user_data = this.raw_user_data.split('\n').filter(Boolean).map(row => row.split(','));
@@ -147,7 +146,7 @@ class Data_Processing {
             }
 
 
-            const {date: corrected_birth, corrected_age: true_age} = convert_month_date(date_of_birth, age);
+            const {date: corrected_birth, corrected_age: true_age} = this.convert_month_date(date_of_birth, age);
 
             return {
                 title: title,
