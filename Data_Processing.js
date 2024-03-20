@@ -62,7 +62,7 @@ function convert_month_date(date_of_birth, input_age) {
 
 
     if (year.length === 2) {
-        const current_year = new Date().getFullYear();
+        const current_year = new Date(2024, 1, 26).getFullYear();
         const last_two_digits = parseInt(current_year.toString().slice(-2), 10);
         const first_two_digits = (parseInt(year) > last_two_digits) ? '19' : '20';
         year = first_two_digits + year;
@@ -97,6 +97,7 @@ class Data_Processing {
         this.raw_user_data = "";
         this.formatted_user_data = [];
         this.cleaned_user_data = [];
+        this.non_duplicated_data = [];
     }
 
     // Load data from csv
@@ -174,7 +175,7 @@ class Data_Processing {
                 return true;
             }
         });
-
+        this.non_duplicated_data = unique_usr;
         // Second, clean title, first_name, surname, age
         this.cleaned_user_data = unique_usr.map(user => {
             let {title, first_name, middle_name, surname, date_of_birth, age, email} = user;
@@ -223,7 +224,7 @@ class Data_Processing {
     }
 
     clean_age(date_of_birth) {
-        const collected_date = new Date(2024, 1, 26); // JavaScript中月份是从0开始的，所以1代表二月
+        const collected_date = new Date(2024, 1, 26);
         const birth_dat_part = date_of_birth.split('/');
         const birth_date = new Date(parseInt(birth_dat_part[2], 10), parseInt(birth_dat_part[1], 10) - 1, parseInt(birth_dat_part[0], 10));
 
@@ -237,7 +238,7 @@ class Data_Processing {
         return age_year;
     }
 
-    most_common_surname(){
+    most_common_surname() {
         const count = {};
 
         this.cleaned_user_data.forEach(({surname}) => {
@@ -260,7 +261,7 @@ class Data_Processing {
     }
 
     average_age() {
-        const age_sum = this.cleaned_user_data.reduce((acc, { age }) => acc + age, 0);
+        const age_sum = this.cleaned_user_data.reduce((acc, {age}) => acc + age, 0);
         const average = age_sum / this.cleaned_user_data.length;
         return parseFloat(average.toFixed(1));
     }
@@ -318,8 +319,48 @@ class Data_Processing {
         return percentages;
     }
 
+    percentage_altered() {
+        const total_data = this.formatted_user_data.length * 7;
 
+        const not_matched = this.cleaned_user_data.filter(cleaned_data =>
+            !this.non_duplicated_data.some(non_duplicated =>
+                cleaned_data.title === non_duplicated.title &&
+                cleaned_data.first_name === non_duplicated.first_name &&
+                cleaned_data.middle_name === non_duplicated.middle_name &&
+                cleaned_data.surname === non_duplicated.surname &&
+                cleaned_data.date_of_birth === non_duplicated.date_of_birth &&
+                cleaned_data.age === non_duplicated.age &&
+                cleaned_data.email === non_duplicated.email
+            )
+        );
 
+        let different_count_values = 0;
 
+        not_matched.forEach(not_matched_data => {
+            const matched = this.non_duplicated_data.find(target_helper =>
+                not_matched_data.middle_name === target_helper.middle_name && not_matched_data.date_of_birth === target_helper.date_of_birth
+            );
+
+            if (matched) {
+                ['title', 'first_name', 'surname', 'age', 'email'].forEach(key => {
+                    if (not_matched_data[key] !== matched[key]) {
+                        different_count_values++;
+                    }
+                });
+            }
+        });
+
+        // console.log(different_count_values);
+        const changed_data = different_count_values + (this.formatted_user_data.length - this.cleaned_user_data.length) * 7;
+        //console.log(changed_data)
+        const percentage = (changed_data / total_data) * 100;
+        return percentage.toFixed(1);
+    }
 }
 
+
+// const dataProcessor = new Data_Processing();
+// dataProcessor.load_CSV("Raw_User_Data");
+// dataProcessor.format_data();
+// dataProcessor.clean_data();
+// console.log(dataProcessor.percentage_altered())
