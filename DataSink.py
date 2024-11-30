@@ -42,13 +42,16 @@ class DataSink(Operator):
         pose_array = cp.asnumpy(cp.asarray(pose_data.get("pose"), order="C"))
 
         # Convert to bytes for TCP/IP transmission
+       # Convert pose array to bytes for TCP/IP transmission
         xyz_bytes = pose_array.astype(np.float32).tobytes()
         data_to_send = xyz_bytes + b'\n'
 
-        # 将数据推送到队列中
+# Push to the queue (single object)
         self.queue.put(data_to_send)
+
 
     def stop(self):
         """停止后台线程"""
         self.running = False
         self.sender_thread.join()
+
